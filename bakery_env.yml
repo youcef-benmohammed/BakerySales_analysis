@@ -183,6 +183,7 @@ dependencies:
   - pip=24.2=pyhd8ed1ab_0
   - pkgutil-resolve-name=1.3.10=pyhd8ed1ab_1
   - platformdirs=4.2.2=pyhd8ed1ab_0
+  - plotly=5.23.0=pyhd8ed1ab_0
   - prometheus_client=0.20.0=pyhd8ed1ab_0
   - prompt-toolkit=3.0.47=pyha770c72_0
   - protobuf=4.25.3=py39h1be52a0_0
