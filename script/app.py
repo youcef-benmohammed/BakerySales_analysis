@@ -67,7 +67,7 @@ with tab0:
     """)
     # import image
     from PIL import Image
-    img = Image.open('../media/bakery.webp')
+    img = Image.open('media/bakery.webp')
     st.image(img)
 
     # Display a preview of the filtered data
