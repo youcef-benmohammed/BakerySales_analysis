@@ -12,7 +12,7 @@ st.set_page_config(page_title="Bakery Sales Analysis", layout="wide")
 # Load data
 @st.cache_data
 def load_data():
-    bakery = pd.read_csv("../data/BakerySales.csv")
+    bakery = pd.read_csv("data/BakerySales.csv")
     bakery['datetime'] = pd.to_datetime(bakery['date'] + ' ' + bakery['time'])
     bakery['unit_price'] = bakery['unit_price'].str.replace('€', '').str.replace(',', '.').astype(float)
     bakery['total_price'] = bakery['Quantity'] * bakery['unit_price']
