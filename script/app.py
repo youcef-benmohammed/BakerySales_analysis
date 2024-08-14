@@ -1,4 +1,3 @@
-# Import libraries
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -23,18 +22,64 @@ def load_data():
     bakery['weekday'] = bakery['datetime'].dt.weekday
     bakery['month'] = bakery['datetime'].dt.month
     return bakery
+
 bakery = load_data()
+
+# Define sidebar filters
+day_names = list(calendar.day_name)
+with st.sidebar:
+    st.header("Filters")
+    #date_range = st.date_input("Select date range", [bakery['date'].min(), bakery['date'].max()])
+
+    min_date = bakery['date'].min()
+    max_date = bakery['date'].max()
+    
+    date_range = st.date_input("Select date range", [min_date, max_date], min_value=min_date, max_value=max_date)
+
+
+    selected_products = st.multiselect("Select products", options=bakery['article'].unique(), default=bakery['article'].unique())
+    selected_days = st.multiselect("Select weekdays", options=day_names, default=day_names)
+
+    # Filter the data
+    filtered_data = bakery[(bakery['date'] >= date_range[0]) & (bakery['date'] <= date_range[1])]
+    filtered_data = filtered_data[filtered_data['article'].isin(selected_products)]
+    filtered_data = filtered_data[filtered_data['weekday'].apply(lambda x: calendar.day_name[x] in selected_days)]
 
 # Main title
 st.title("Bakery Sales Analysis")
 
 # Create tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["Daily Sales", "Popular Products", "Hourly Sales", "Weekly Sales", "Analyses Supplémentaires"])
+tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs(["Introduction","Daily Sales", "Hourly Sales", "Weekly Sales", "Popular Products", "UnPopular Products"])
 
+with tab0:
+    st.header("Introduction")
+    st.write(""" 
+        This analysis of bakery sales aims to raise awareness among the general public and industry professionals of the vital importance of data analysis in optimizing the management of food businesses. 
+
+        The main objectives are:
+        - Reduce food waste
+        - Maximize sales
+        - Efficient inventory management
+        - Improve customer experience         
+        
+        *Data source: [French Bakery Daily Sales Analysis](https://www.kaggle.com/code/clairemtian/french-bakery-daily-sales-analysis)*
+    """)
+    # import image
+    from PIL import Image
+    img = Image.open('../media/bakery.webp')
+    st.image(img)
+    
+    st.write(filtered_data.iloc[:, 3:9].head())
+    # Add a sidebar with some statistics
+    st.header("Overview")
+    st.write(f"Total number of unique transactions: {len(filtered_data['ticket_number'].unique())}")
+    st.write(f"Sales revenue: {filtered_data['total_price'].sum():.2f} €")
+    st.write(f"Unique number of products: {filtered_data['article'].nunique()}")
+    st.write(f"Coverage period: from {filtered_data['date'].min()} to {filtered_data['date'].max()}")
 with tab1:
     st.header("Daily Sales")
     
-    daily_sales = bakery.groupby('date')['total_price'].sum().reset_index()
+    daily_sales = filtered_data.groupby('date')['total_price'].sum().reset_index()
     
     fig, ax = plt.subplots(figsize=(12, 6))
     ax.plot(daily_sales['date'], daily_sales['total_price'])
@@ -49,26 +94,9 @@ with tab1:
     """)
 
 with tab2:
-    st.header("Popular Products")
-    
-    top_products = bakery.groupby('article')['Quantity'].sum().sort_values(ascending=False).head(10)
-    
-    fig, ax = plt.subplots(figsize=(10, 6))
-    top_products.plot(kind='bar', ax=ax)
-    ax.set_title('Top 10 Best-Selling Products')
-    ax.set_xlabel('Product')
-    ax.set_ylabel('Total quantity sold')
-    plt.xticks(rotation=45, ha='right')
-    st.pyplot(fig)
-    
-    st.write("""
-    The barplot shows that among the ten best-selling products, TRADITIONAL_BAGUETTE stands out as the best-selling product.
-    """)
-
-with tab3:
     st.header("Hourly Sales")
     
-    hourly_sales = bakery.groupby('hour')['total_price'].sum()
+    hourly_sales = filtered_data.groupby('hour')['total_price'].sum()
     
     fig, ax = plt.subplots(figsize=(10, 6))
     hourly_sales.plot(kind='bar', ax=ax)
@@ -82,10 +110,10 @@ with tab3:
     This can be useful for example to plan staffing accordingly by increasing personnel during morning peak hours and reducing it in the afternoon. Additionally, manage inventory more effectively to prevent overstocking or shortages, particularly by preparing popular items before peak sales times.
     """)
 
-with tab4:
+with tab3:
     st.header("Weekly Sales")
     
-    week_sales = bakery.groupby('weekday')['total_price'].sum()
+    week_sales = filtered_data.groupby('weekday')['total_price'].sum()
     week_sales.index = week_sales.index.map(lambda x: calendar.day_name[x])
 
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -99,60 +127,49 @@ with tab4:
     The weekly sales pattern shows that sales peak at weekends, while they are particularly low on Wednesdays. It would make sense to boost stocks and staffing levels at weekends, and stimulate sales on Wednesdays with promotions or special offers to improve profitability.    
     """)
 
-with tab5:
-    st.header("Analyses Supplémentaires")
+with tab4:
+    st.header("Popular Products")
     
-    # Monthly sales trend
-    monthly_sales = bakery.groupby('month')['total_price'].sum().reset_index()
-    
+    top_products = filtered_data.groupby('article')['Quantity'].sum().sort_values(ascending=False).head(10)
+    top_products = top_products.astype(int)
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(monthly_sales['month'], monthly_sales['total_price'], marker='o')
-    ax.set_title('Tendance des Ventes Mensuelles')
-    ax.set_xlabel('Mois')
-    ax.set_ylabel('Ventes Totales (€)')
-    ax.set_xticks(range(1, 13))
-    st.pyplot(fig)
-    
-    st.write("""
-    Ce graphique montre l'évolution des ventes mensuelles.
-    Il permet d'identifier les mois les plus performants et les variations saisonnières sur l'ensemble de l'année.
-    """)
-    
-    # Extract category from 'article' and compute total sales per category
-    bakery['category'] = bakery['article'].apply(lambda x: x.split()[0])
-    category_sales = bakery.groupby('category')['total_price'].sum().sort_values(ascending=False)
-
-    # Select top 15 categories
-    top_20_categories = category_sales.head(15)
-
-    # Plotting
-    fig, ax = plt.subplots(figsize=(10, 6))
-    top_20_categories.plot(kind='pie', autopct='%1.1f%%', ax=ax)
-    ax.set_title('Répartition des Ventes par Catégorie de Produits')
-    ax.set_ylabel('')  # Hide y-label
+    top_products.plot(kind='bar', ax=ax)
+    ax.set_title('Top 10 Best-Selling Products')
+    ax.set_xlabel('Product')
+    ax.set_ylabel('Total quantity sold')
+    plt.xticks(rotation=45, ha='right')
     st.pyplot(fig)
 
-    st.write("""
-    Ce graphique en camembert montre la répartition des ventes totales par catégorie de produits.
-    Il permet d'identifier les catégories les plus importantes en termes de chiffre d'affaires.
-    """)
-    
-    # Correlation heatmap
-    correlation = bakery[['Quantity', 'unit_price', 'total_price', 'hour', 'week']].corr()
-    
+    # Create Pie Chart
     fig, ax = plt.subplots(figsize=(10, 8))
-    sns.heatmap(correlation, annot=True, cmap='coolwarm', ax=ax)
-    ax.set_title('Carte de Corrélation')
+    ax.pie(top_products, labels=top_products.index, autopct='%1.1f%%', startangle=140)
+    ax.set_title('Top 10 Best-Selling Products')
     st.pyplot(fig)
     
+    st.subheader("Quantities Sold for Top 10 Products")
+    st.table(top_products.reset_index().rename(columns={'article': 'Product', 'Quantity': 'Quantity Sold'}))
+
     st.write("""
-    Cette carte de chaleur montre les corrélations entre différentes variables.
-    Elle permet d'identifier les relations potentielles entre la quantité vendue, le prix unitaire, le prix total, l'heure de la journée et la semaine de l'année.
+    The barplot shows that among the ten best-selling products, TRADITIONAL_BAGUETTE stands out as the best-selling product.
     """)
 
-# Add a sidebar with some statistics
-st.sidebar.header("Statistiques Générales")
-st.sidebar.write(f"Nombre total de transactions: {len(bakery)}")
-st.sidebar.write(f"Chiffre d'affaires total: {bakery['total_price'].sum():.2f} €")
-st.sidebar.write(f"Nombre de produits uniques: {bakery['article'].nunique()}")
-st.sidebar.write(f"Période couverte: du {bakery['date'].min()} au {bakery['date'].max()}")
+with tab5:
+    st.header("UnPopular Products")
+    
+    unpopular_products = filtered_data.groupby('article')['Quantity'].sum().sort_values(ascending=True).head(10)
+    unpopular_products = unpopular_products.astype(int)
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    unpopular_products.plot(kind='bar', ax=ax)
+    ax.set_title('The 10 Unpopular Products')
+    ax.set_xlabel('Product')
+    ax.set_ylabel('Total quantity sold')
+    plt.xticks(rotation=45, ha='right')
+    st.pyplot(fig)
+    
+    st.subheader("Quantities Sold for the 10 UnPopular Products")
+    st.table(unpopular_products.reset_index().rename(columns={'article': 'Product', 'Quantity': 'Quantity Sold'}))
+    
+    st.write("""
+    The barplot shows that among the ten unpopular products, PLAT_6.50E stands out as the least-selling product.
+    """)
