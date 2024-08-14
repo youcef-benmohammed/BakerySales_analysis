@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import calendar
+import plotly.express as px
 from datetime import datetime
 
 # Set page configuration
@@ -36,10 +37,10 @@ with st.sidebar:
     
     date_range = st.date_input("Select date range", [min_date, max_date], min_value=min_date, max_value=max_date)
 
-
-    selected_products = st.multiselect("Select products", options=bakery['article'].unique(), default=bakery['article'].unique())
     selected_days = st.multiselect("Select weekdays", options=day_names, default=day_names)
 
+    selected_products = st.multiselect("Select products", options=bakery['article'].unique(), default=bakery['article'].unique())
+    
     # Filter the data
     filtered_data = bakery[(bakery['date'] >= date_range[0]) & (bakery['date'] <= date_range[1])]
     filtered_data = filtered_data[filtered_data['article'].isin(selected_products)]
@@ -54,7 +55,7 @@ tab0, tab1, tab2, tab3, tab4, tab5 = st.tabs(["Introduction","Daily Sales", "Hou
 with tab0:
     st.header("Introduction")
     st.write(""" 
-        This analysis of bakery sales aims to raise awareness among the general public and industry professionals of the vital importance of data analysis in optimizing the management of food businesses. 
+        This analysis is based on a bakery's daily sales data, making it possible to identify the most popular products, analyze hourly and weekly trends, and provide recommendations for optimizing inventory management and maximizing revenues.
 
         The main objectives are:
         - Reduce food waste
@@ -68,8 +69,11 @@ with tab0:
     from PIL import Image
     img = Image.open('../media/bakery.webp')
     st.image(img)
-    
+
+    # Display a preview of the filtered data
+    st.header("Data Overview")
     st.write(filtered_data.iloc[:, 3:9].head())
+
     # Add a sidebar with some statistics
     st.header("Overview")
     st.write(f"Total number of unique transactions: {len(filtered_data['ticket_number'].unique())}")
@@ -89,8 +93,12 @@ with tab1:
     plt.xticks(rotation=45)
     st.pyplot(fig)
     
-    st.write("""
-    The plot shows significant sales peaks on August, suggesting strong demand, probably due to seasonal factors such as the summer vacations. This indicates a key period for maximizing revenues.
+    # Extract the peak day and its sales
+    peak_day = daily_sales.loc[daily_sales['total_price'].idxmax()]
+
+    st.write(f"""
+    During the period from **{date_range[0]}** to **{date_range[1]}**, the highest sales were recorded on **{peak_day['date']}** with a total of **{peak_day['total_price']:.2f} €**.
+    This peak indicates that this day had exceptional sales, possibly due to special events or promotions.
     """)
 
 with tab2:
@@ -105,9 +113,13 @@ with tab2:
     ax.set_ylabel('Total sales (€)')
     st.pyplot(fig)
     
-    st.write("""
-    The hourly sales pattern shows that sales are highest in the morning, with a peak at 11am. Sales are almost non-existent between 2pm and 4pm, then pick up slightly in the evening.
-    This can be useful for example to plan staffing accordingly by increasing personnel during morning peak hours and reducing it in the afternoon. Additionally, manage inventory more effectively to prevent overstocking or shortages, particularly by preparing popular items before peak sales times.
+    # Extract the peak hour and its sales
+    peak_hour = hourly_sales.idxmax()
+    peak_hour_sales = hourly_sales.max()
+
+    st.write(f"""
+    During the period from **{date_range[0]}** to **{date_range[1]}**, the highest sales occurred at **{peak_hour}:00**, with a total of **{peak_hour_sales:.2f} €**.
+    This suggests that **{peak_hour}:00** is a peak time for sales, indicating higher customer traffic at this hour.
     """)
 
 with tab3:
@@ -123,8 +135,13 @@ with tab3:
     ax.set_ylabel('Total Sales (€)')
     st.pyplot(fig)
     
-    st.write("""
-    The weekly sales pattern shows that sales peak at weekends, while they are particularly low on Wednesdays. It would make sense to boost stocks and staffing levels at weekends, and stimulate sales on Wednesdays with promotions or special offers to improve profitability.    
+    # Extract the peak day and its sales
+    peak_day = week_sales.idxmax()
+    peak_day_sales = week_sales.max()
+
+    st.write(f"""
+    During the period from **{date_range[0]}** to **{date_range[1]}**, the highest sales were recorded on **{peak_day}**, with a total of **{peak_day_sales:.2f} €**.
+    This indicates that **{peak_day}** is a key day for sales. You might consider focusing resources and promotions on this day to maximize sales.
     """)
 
 with tab4:
@@ -140,17 +157,20 @@ with tab4:
     plt.xticks(rotation=45, ha='right')
     st.pyplot(fig)
 
-    # Create Pie Chart
-    fig, ax = plt.subplots(figsize=(10, 8))
-    ax.pie(top_products, labels=top_products.index, autopct='%1.1f%%', startangle=140)
-    ax.set_title('Top 10 Best-Selling Products')
-    st.pyplot(fig)
+    st.subheader("Treemap of Quantities Sold for Top 10 Products")
+    treemap_fig = px.treemap(top_products.reset_index(), 
+                             path=['article'], 
+                             values='Quantity', 
+                             title='')
+    st.plotly_chart(treemap_fig)
     
-    st.subheader("Quantities Sold for Top 10 Products")
-    st.table(top_products.reset_index().rename(columns={'article': 'Product', 'Quantity': 'Quantity Sold'}))
+    # Extract the top-selling product and its quantity
+    top_product = top_products.idxmax()
+    top_product_quantity = top_products.max()
 
-    st.write("""
-    The barplot shows that among the ten best-selling products, TRADITIONAL_BAGUETTE stands out as the best-selling product.
+    st.write(f"""
+    During the selected period from **{date_range[0]}** to **{date_range[1]}**, **{top_product}** was the best-selling product, with a total of **{top_product_quantity}** units sold.
+    This product's popularity suggests strong customer preference, making it crucial to ensure its availability.
     """)
 
 with tab5:
@@ -170,6 +190,11 @@ with tab5:
     st.subheader("Quantities Sold for the 10 UnPopular Products")
     st.table(unpopular_products.reset_index().rename(columns={'article': 'Product', 'Quantity': 'Quantity Sold'}))
     
-    st.write("""
-    The barplot shows that among the ten unpopular products, PLAT_6.50E stands out as the least-selling product.
+    # Extract the least popular product and its quantity
+    least_popular_product = unpopular_products.idxmin()
+    least_popular_quantity = unpopular_products.min()
+    
+    st.write(f"""
+    During the selected period from **{date_range[0]}** to **{date_range[1]}**, **{least_popular_product}** was the least popular product, with only **{least_popular_quantity}** units sold.
+    This suggests potential issues with this product, such as pricing, visibility, or customer preference, that may need to be addressed.
     """)
