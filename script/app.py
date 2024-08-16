@@ -75,7 +75,6 @@ with tab0:
     st.write(filtered_data.iloc[:, 3:9].head())
 
     # Add a sidebar with some statistics
-    st.header("Overview")
     st.write(f"Total number of unique transactions: {len(filtered_data['ticket_number'].unique())}")
     st.write(f"Sales revenue: {filtered_data['total_price'].sum():.2f} €")
     st.write(f"Unique number of products: {filtered_data['article'].nunique()}")
